@@ -8,6 +8,7 @@ import { useUser, useAuth } from '@clerk/nextjs';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Send, LogIn } from "lucide-react";
+import { usePremium } from '@/lib/premium-context'
 
 import CategorySelector from "./CategorySelector";
 import ChatMessages from "./ChatMessages";
@@ -19,7 +20,6 @@ export default function ChatPage({ initialChatId = null }: ChatPageProps) {
   const [loading, setLoading] = useState<boolean>(false);
   const [messageCount, setMessageCount] = useState<number>(0);
   const [showLimitMessage, setShowLimitMessage] = useState<boolean>(false);
-  const [isPremium, setIsPremium] = useState<boolean>(false);
   const [collectedIds, setCollectedIds] = useState<number[]>([]);
   const [chatId, setChatId] = useState<string | null>(initialChatId);
   // In your ChatPage component
@@ -34,6 +34,7 @@ const [isHistoryLoading, setIsHistoryLoading] = useState<boolean>(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { isLoaded, isSignedIn, user } = useUser();
+  const { isPremium } = usePremium()
 
 
   // Add this function to your ChatPage component
@@ -397,7 +398,7 @@ const handleApiError = (question: string, categories: string[]) => {
       const registerUser = async () => {
         try {
           const response = await axios.post(
-            "https://lexscope-production.up.railway.app/add_user",
+            "https://lexscope-production.up.railway.app/create_user",
             { auth_id: userId },
             {
               headers: {
@@ -416,35 +417,7 @@ const handleApiError = (question: string, categories: string[]) => {
   }, [isLoaded, isSignedIn, userId]);
 
   // Check premium status
-  useEffect(() => {
-    const checkPremiumStatus = async () => {
-      if (userId) {
-        try {
-          const response = await axios.post(
-            "https://lexscope-production.up.railway.app/get_user", 
-            { auth_id: userId },
-            {
-              headers: {
-                'Content-Type': 'application/json'
-              }
-            }
-          );
-          
-          if (response.data && response.data.data) {
-            const userIsPremium = response.data.data[3] === true;
-            setIsPremium(userIsPremium);
-            console.log('Premium status:', userIsPremium);
-          }
-        } catch (error) {
-          console.error("Error checking premium status:", error);
-        }
-      }
-    };
-    
-    if (isLoaded && isSignedIn && userId) {
-      checkPremiumStatus();
-    }
-  }, [isLoaded, isSignedIn, userId]);
+ // Update this useEffect in your ChatPage component to match the header implementation
 
   // Load chat history when chatId is provided
  
@@ -813,7 +786,7 @@ const handleSubmit = async (e?: React.FormEvent) => {
             setExpandedIndex={setExpandedIndex}
             handleTypingComplete={handleTypingComplete}
             isSignedIn={!!isSignedIn}
-            isPremium={isPremium}
+            isPremium={isPremium} // This now comes from the context
             isLoaded={!!isLoaded}
           />
         )}

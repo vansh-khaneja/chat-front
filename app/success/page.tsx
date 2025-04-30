@@ -4,17 +4,27 @@ import { markUserAsPremium } from '@/utils/updateUser';
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@clerk/nextjs';
+import { usePremium } from '@/lib/premium-context';
 
 export default function SuccessPage() {
   const router = useRouter();
   const { userId } = useAuth();
+  const { refreshPremiumStatus } = usePremium();
 
   useEffect(() => {
-    if (typeof userId === 'string') {
-      markUserAsPremium({ userId });
-      console.log('✅ User marked as premium.');
-    }
-  }, [userId]);
+    const updatePremiumStatus = async () => {
+      if (typeof userId === 'string') {
+        // Mark the user as premium in the backend
+        await markUserAsPremium({ userId });
+        console.log('✅ User marked as premium.');
+        
+        // Refresh the premium status in the context so all components update
+        await refreshPremiumStatus();
+      }
+    };
+    
+    updatePremiumStatus();
+  }, [userId, refreshPremiumStatus]);
 
   useEffect(() => {
     const timeout = setTimeout(() => {

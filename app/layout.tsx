@@ -1,4 +1,5 @@
-// app/layout.tsx
+'use client'
+
 import {
   ClerkProvider,
   SignedIn,
@@ -7,6 +8,8 @@ import {
 import "./globals.css"
 import Header from './components/header'
 import ChatSidebar from '@/components/ChatPage/ChatSideBar'
+import { PremiumProvider } from '@/lib/premium-context'  // Import the new provider
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -16,17 +19,19 @@ export default function RootLayout({
     <ClerkProvider>
       <html lang="en">
         <body>
-          <main className="min-h-screen">
-            <Header/>
-            <div className="flex h-[calc(100vh-64px)]">
-              <SignedIn>
-                <ChatSidebar />
-              </SignedIn>
-              <div className="flex-1">
-                {children}
+          <PremiumProvider>  {/* Wrap the app with PremiumProvider */}
+            <main className="min-h-screen">
+              <Header/>
+              <div className="flex h-[calc(100vh-64px)]">
+                <SignedIn>
+                  <ChatSidebar />
+                </SignedIn>
+                <div className="flex-1">
+                  {children}
+                </div>
               </div>
-            </div>
-          </main>
+            </main>
+          </PremiumProvider>
         </body>
       </html>
     </ClerkProvider>

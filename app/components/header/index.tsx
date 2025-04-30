@@ -1,53 +1,20 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import {
   SignInButton,
   SignUpButton,
   SignedIn,
   SignedOut,
   UserButton,
-  useAuth
 } from '@clerk/nextjs'
-import axios from 'axios'
 import { useUser } from '@clerk/nextjs'
-
+import { usePremium } from '@/lib/premium-context'
 
 export default function Header() {
-  const [isPremium, setIsPremium] = useState(false)
-  const [loading, setLoading] = useState(true)
-  const { userId } = useAuth()
+  // Use the centralized premium context instead of local state
+  const { isPremium, loading } = usePremium() 
   const { user } = useUser()
-  var email =user?.primaryEmailAddress?.emailAddress
-  useEffect(() => {
-    const checkPremiumStatus = async () => {
-      if (userId) {
-        try {
-          setLoading(true)
-          const response = await axios.post('https://lexscope-production.up.railway.app/get_user', {
-            auth_id: userId
-          })
-          
-          // Check if the response has the expected structure with premium status
-          if (response.data && response.data.data) {
-            // Based on your screenshot, the premium status is at index 3 (fourth item)
-            // The array looks like [userId, timestamp, "[trueit]", true, date]
-            const userIsPremium = response.data.data[3] === true
-            setIsPremium(userIsPremium)
-            console.log('Premium status:', userIsPremium)
-          }
-        } catch (error) {
-          console.error('Error checking premium status:', error)
-        } finally {
-          setLoading(false)
-        }
-      }
-    }
-
-    if (userId) {
-      checkPremiumStatus()
-    }
-  }, [userId])
+  const email = user?.primaryEmailAddress?.emailAddress
 
   const handleActivatePro = async () => {
     const res = await fetch('/api/create-checkout-session', {
@@ -60,7 +27,6 @@ export default function Header() {
     window.location.href = data.url;
   };
 
-console.log("use",user?.primaryEmailAddress?.emailAddress)
   return (
     <header className="flex justify-between items-center p-3 shadow-md bg-white border-b border-gray-200">
       {/* Logo and Brand */}
