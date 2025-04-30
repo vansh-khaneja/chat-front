@@ -2,13 +2,14 @@
 'use client'
 
 import ChatPage from '@/components/ChatPage';
-import { use } from 'react';
+import { useParams } from 'next/navigation';
 
-export default function ChatWithId({ params }: { params: Promise<{ chatId: string }> }) {
-  // Unwrap params using React.use()
-  const resolvedParams = use(params);
+export default function ChatWithId() {
+  // Get chatId directly from useParams instead of passing it as a Promise
+  const params = useParams();
+  const chatId = params?.chatId as string;
   
   return (
-    <ChatPage initialChatId={resolvedParams.chatId} />
+    <ChatPage initialChatId={chatId} />
   );
 }

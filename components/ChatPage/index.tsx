@@ -1,7 +1,7 @@
 'use client'
 import React, { useState, useRef, useEffect } from "react";
 import axios from "axios";
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { v4 as uuidv4 } from 'uuid';
 import { SignedIn, SignedOut, SignInButton } from "@clerk/nextjs";
 import { useUser, useAuth } from '@clerk/nextjs';
@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Send, LogIn } from "lucide-react";
 import { usePremium } from '@/lib/premium-context';
-import { useSessions } from '@/lib/sessions-context'; // Import the sessions context
+import { useSessions } from '@/lib/sessions-context';
 
 import CategorySelector from "./CategorySelector";
 import ChatMessages from "./ChatMessages";
@@ -23,7 +23,11 @@ export default function ChatPage({ initialChatId = null }: ChatPageProps) {
   const [showLimitMessage, setShowLimitMessage] = useState<boolean>(false);
   const [chatId, setChatId] = useState<string | null>(initialChatId);
   const [isHistoryLoading, setIsHistoryLoading] = useState<boolean>(false);
+  const [processingInitialQuestion, setProcessingInitialQuestion] = useState<boolean>(false);
+  const [navigationComplete, setNavigationComplete] = useState<boolean>(!!initialChatId);
+  
   const router = useRouter();
+  const params = useParams();
 
   const { userId } = useAuth();
   const [chatLog, setChatLog] = useState<ChatMessage[]>([]);
@@ -37,6 +41,14 @@ export default function ChatPage({ initialChatId = null }: ChatPageProps) {
   
   // Use the sessions context to access session data
   const { getSessionById, refreshSessions } = useSessions();
+
+  // Effect to update chatId from URL if it changes
+  useEffect(() => {
+    if (params && params.chatId && typeof params.chatId === 'string') {
+      setChatId(params.chatId);
+      setNavigationComplete(true);
+    }
+  }, [params]);
 
   // Toggle category selection
   const toggleCategory = (categoryId: string) => {
@@ -140,7 +152,7 @@ export default function ChatPage({ initialChatId = null }: ChatPageProps) {
   };
 
   // Fetch chat history using the sessions context
-  const loadChatHistory = () => {
+  const loadChatHistory = async () => {
     if (!chatId) return;
     
     setIsHistoryLoading(true);
@@ -160,6 +172,92 @@ export default function ChatPage({ initialChatId = null }: ChatPageProps) {
       console.error("Error loading chat history:", error);
     } finally {
       setIsHistoryLoading(false);
+    }
+  };
+
+  // Process initial question stored in session storage
+  const processInitialQuestion = async () => {
+    const pendingQuestion = sessionStorage.getItem('pendingQuestion');
+    const pendingCategoriesJson = sessionStorage.getItem('pendingCategories');
+    
+    if (!pendingQuestion || processingInitialQuestion) return;
+    
+    setProcessingInitialQuestion(true);
+    
+    let pendingCategories: string[] = [];
+    if (pendingCategoriesJson) {
+      try {
+        pendingCategories = JSON.parse(pendingCategoriesJson);
+      } catch (e) {
+        console.error("Error parsing pending categories:", e);
+      }
+    }
+    
+    // Clear storage immediately to prevent reprocessing
+    sessionStorage.removeItem('pendingQuestion');
+    sessionStorage.removeItem('pendingCategories');
+    sessionStorage.removeItem('shouldProcessQuestion');
+    
+    // Add question to chat log
+    setChatLog([{ 
+      question: pendingQuestion,
+      categories: pendingCategories,
+      isLoading: true 
+    }]);
+    
+    // Save user message
+    if (userId) {
+      await saveChatMessage("user", pendingQuestion);
+    }
+    
+    try {
+      // Use the API endpoint
+      const res = await axios.post(
+        "https://lexscope-production.up.railway.app/response", 
+        { 
+          question: pendingQuestion,
+          case_types: pendingCategories,
+          limit: 5
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      
+      // Format the response
+      const formattedResponse: ApiResponse = {
+        answer: res.data.response,
+        metadata: formatMetadata(res.data.metadata)
+      };
+      
+      // Save AI response
+      if (userId) {
+        await saveChatMessage("ai", formattedResponse.answer);
+      }
+      
+      // Update chat log with response
+      setChatLog(prev => {
+        const newLog = [...prev];
+        const lastIndex = newLog.length - 1;
+        if (lastIndex >= 0) {
+          newLog[lastIndex] = { 
+            question: pendingQuestion,
+            categories: pendingCategories,
+            response: formattedResponse,
+            isLoading: false,
+            isTyping: true
+          };
+        }
+        return newLog;
+      });
+      
+    } catch (error) {
+      console.error("Error fetching answer:", error);
+      handleApiError(pendingQuestion, pendingCategories);
+    } finally {
+      setProcessingInitialQuestion(false);
     }
   };
 
@@ -188,11 +286,13 @@ export default function ChatPage({ initialChatId = null }: ChatPageProps) {
         return;
       }
       
-      // Store question and categories in sessionStorage
+      // Instead of immediately navigating, we'll:
+      // 1. Store the question for processing
       sessionStorage.setItem('pendingQuestion', newQuestion);
       sessionStorage.setItem('pendingCategories', JSON.stringify(selectedCategories));
       sessionStorage.setItem('shouldProcessQuestion', 'true');
       
+      // 2. Navigate to the new chat URL
       router.push(`/${newChatId}`);
       return;
     }
@@ -398,86 +498,16 @@ export default function ChatPage({ initialChatId = null }: ChatPageProps) {
 
   // Process pending question after navigation
   useEffect(() => {
-    const pendingQuestion = sessionStorage.getItem('pendingQuestion');
-    const pendingCategoriesJson = sessionStorage.getItem('pendingCategories');
-    const shouldProcessQuestion = sessionStorage.getItem('shouldProcessQuestion');
-    
-    if (pendingQuestion && chatId && shouldProcessQuestion === 'true' && chatLog.length === 0) {
-      let pendingCategories: string[] = [];
-      if (pendingCategoriesJson) {
-        try {
-          pendingCategories = JSON.parse(pendingCategoriesJson);
-        } catch (e) {
-          console.error("Error parsing pending categories:", e);
-        }
-      }
-      
-      setChatLog([{ 
-        question: pendingQuestion,
-        categories: pendingCategories,
-        isLoading: true 
-      }]);
-      
-      // Save the user's message to the chat history
-      saveChatMessage("user", pendingQuestion);
-      
-      const fetchAnswer = async () => {
-        try {
-          // NEW API ENDPOINT AND REQUEST STRUCTURE
-          const res = await axios.post(
-            "https://lexscope-production.up.railway.app/response", 
-            { 
-              question: pendingQuestion,
-              case_types: pendingCategories,
-              limit: 5
-            },
-            {
-              headers: {
-                'Content-Type': 'application/json'
-              }
-            }
-          );
-          
-          // Format the response to match the expected structure
-          const formattedResponse: ApiResponse = {
-            answer: res.data.response,
-            metadata: formatMetadata(res.data.metadata)
-          };
-          
-          // Save the AI's response to the chat history
-          await saveChatMessage("ai", formattedResponse.answer);
-          
-          // Update chat log with the response
-          setChatLog(prev => {
-            const newLog = [...prev];
-            const lastIndex = newLog.length - 1;
-            if (lastIndex >= 0) {
-              newLog[lastIndex] = { 
-                question: pendingQuestion,
-                categories: pendingCategories,
-                response: formattedResponse,
-                isLoading: false,
-                isTyping: true
-              };
-            }
-            return newLog;
-          });
-          
-        } catch (error) {
-          console.error("Error fetching answer:", error);
-          handleApiError(pendingQuestion, pendingCategories);
-        } finally {
-          setLoading(false);
-          // Clear the pending question from sessionStorage
-          sessionStorage.removeItem('pendingQuestion');
-          sessionStorage.removeItem('pendingCategories');
-          sessionStorage.removeItem('shouldProcessQuestion');
-        }
-      };
-      
-      fetchAnswer();
+    if (
+      chatId && 
+      navigationComplete && 
+      chatLog.length === 0 && 
+      sessionStorage.getItem('pendingQuestion') &&
+      !processingInitialQuestion
+    ) {
+      processInitialQuestion();
     }
-  }, [chatId, chatLog.length]);
+  }, [chatId, navigationComplete, chatLog.length, processingInitialQuestion]);
 
   // Auto-scroll to bottom of messages
   useEffect(() => {
@@ -485,6 +515,11 @@ export default function ChatPage({ initialChatId = null }: ChatPageProps) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [chatLog]);
+
+  // Log current state for debugging
+  useEffect(() => {
+    console.log("Current state - chatId:", chatId, "navigationComplete:", navigationComplete);
+  }, [chatId, navigationComplete]);
 
   return (
     <div className="flex flex-col h-[calc(100vh-64px)] bg-white">
