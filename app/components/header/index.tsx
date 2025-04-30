@@ -9,12 +9,15 @@ import {
 } from '@clerk/nextjs'
 import { useUser } from '@clerk/nextjs'
 import { usePremium } from '@/lib/premium-context'
+import { useState } from 'react'
+import { Menu, X } from 'lucide-react'
 
 export default function Header() {
   // Use the centralized premium context instead of local state
   const { isPremium, loading } = usePremium() 
   const { user } = useUser()
   const email = user?.primaryEmailAddress?.emailAddress
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   const handleActivatePro = async () => {
     const res = await fetch('/api/create-checkout-session', {
@@ -27,8 +30,12 @@ export default function Header() {
     window.location.href = data.url;
   };
 
+  const toggleMobileMenu = () => {
+    setMobileMenuOpen(!mobileMenuOpen);
+  };
+
   return (
-    <header className="flex justify-between items-center p-3 shadow-md bg-white border-b border-gray-200">
+    <header className="flex justify-between items-center p-3 shadow-md bg-white border-b border-gray-200 relative z-20">
       {/* Logo and Brand */}
       <div className="flex items-center gap-2">
         {/* Scale icon as logo */}
@@ -46,12 +53,20 @@ export default function Header() {
         </svg>
         <div>
           <h1 className="text-lg font-semibold text-black">LawBot</h1>
-          <p className="text-xs text-gray-500">Tu asistente legal con IA</p>
+          <p className="text-xs text-gray-500 hidden sm:block">Tu asistente legal con IA</p>
         </div>
       </div>
       
-      {/* Authentication Buttons */}
-      <div className="flex items-center gap-3">
+      {/* Mobile menu button */}
+      <button 
+        className="sm:hidden p-2 text-gray-500 focus:outline-none"
+        onClick={toggleMobileMenu}
+      >
+        {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+      </button>
+      
+      {/* Authentication Buttons - Desktop */}
+      <div className="hidden sm:flex items-center gap-3">
         <SignedOut>
           <SignInButton mode="modal">
             <button className="px-4 py-1.5 bg-black text-white text-sm rounded-full hover:bg-gray-800 transition">
@@ -98,6 +113,105 @@ export default function Header() {
             }}
           />
         </SignedIn>
+      </div>
+      
+      {/* Mobile menu */}
+      <div className={`fixed inset-0 bg-white z-10 transition-all duration-300 transform ${mobileMenuOpen ? 'translate-x-0' : 'translate-x-full'} sm:hidden`}>
+        <div className="flex flex-col h-full">
+          {/* Mobile menu header */}
+          <div className="flex justify-between items-center p-4 border-b">
+            <div className="flex items-center gap-2">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="text-black w-5 h-5"
+              >
+                <path d="M8 3v2m8-2v2M8 21v-2m8 2v-2M3 8h2m-2 8h2m14-8h2m-2 8h2M3 12h18M12 3v18"/>
+              </svg>
+              <h1 className="text-lg font-semibold text-black">LawBot</h1>
+            </div>
+            <button 
+              onClick={toggleMobileMenu}
+              className="p-2 text-gray-500"
+            >
+              <X size={20} />
+            </button>
+          </div>
+          
+          {/* Mobile menu content */}
+          <div className="flex-1 p-4">
+            <SignedOut>
+              <div className="flex flex-col gap-3">
+                <SignInButton mode="modal">
+                  <button 
+                    className="w-full px-4 py-2.5 bg-black text-white text-sm rounded-lg hover:bg-gray-800 transition"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Iniciar sesión
+                  </button>
+                </SignInButton>
+                <SignUpButton mode="modal">
+                  <button 
+                    className="w-full px-4 py-2.5 bg-white text-black text-sm border border-gray-300 rounded-lg hover:bg-gray-100 transition"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Registrarse
+                  </button>
+                </SignUpButton>
+              </div>
+            </SignedOut>
+            
+            <SignedIn>
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                  <UserButton
+                    afterSignOutUrl="/"
+                    appearance={{
+                      elements: {
+                        userButtonAvatarBox: "h-12 w-12"
+                      }
+                    }}
+                  />
+                  <div>
+                    <div className="font-medium">{user?.fullName || 'User'}</div>
+                    <div className="text-xs text-gray-500">{email}</div>
+                  </div>
+                </div>
+                
+                {loading ? (
+                  <div className="text-sm px-4 py-2 bg-gray-100 rounded-lg text-center">
+                    Cargando...
+                  </div>
+                ) : isPremium ? (
+                  <div className="bg-green-50 text-green-800 font-medium rounded-lg p-3 flex items-center gap-2 justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 2L15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2z"/>
+                    </svg>
+                    Pro Activado
+                  </div>
+                ) : (
+                  <button 
+                    onClick={() => {
+                      handleActivatePro();
+                      setMobileMenuOpen(false);
+                    }}
+                    className="bg-blue-600 text-white font-medium rounded-lg py-3 hover:bg-blue-700 transition flex items-center gap-2 justify-center"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                    </svg>
+                    Activar Pro
+                  </button>
+                )}
+              </div>
+            </SignedIn>
+          </div>
+        </div>
       </div>
     </header>
   )

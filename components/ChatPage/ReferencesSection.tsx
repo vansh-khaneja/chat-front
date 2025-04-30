@@ -20,7 +20,7 @@ export default function ReferencesSection({
   isLoaded
 }: ReferencesSectionProps) {
   return (
-    <div className="mt-6 space-y-1">
+    <div className="mt-4 sm:mt-6 space-y-1">
       {metadata.map((item, index) => {
         // Apply locked status to references after the first one for:
         // 1. Not logged in users OR
@@ -30,42 +30,42 @@ export default function ReferencesSection({
         return (
           <React.Fragment key={index}>
             {/* Reference item with conditional styling */}
-            <div className={`flex gap-3 py-3 ${isLocked ? "relative" : ""}`}>
+            <div className={`flex gap-2 sm:gap-3 py-2 sm:py-3 ${isLocked ? "relative" : ""}`}>
               {/* Numbered circle */}
               <div className="flex-shrink-0">
-                <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-xs font-semibold">
+                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-gray-100 flex items-center justify-center text-xs font-semibold">
                   {index + 1}
                 </div>
               </div>
               
               {/* Reference content */}
-              <div className="flex-1 text-sm text-gray-800">
-  <div className="flex justify-between items-start mb-2">
-    <div>
-      <span className="font-semibold">{item.case_type}</span>
-      <span className="mx-2 text-gray-400">|</span>
-      {item.date && (
-        <>
-          <span className="text-gray-600">{item.date}</span>
-          <span className="mx-2 text-gray-400">|</span>
-        </>
-      )}
-      <span>file-{item.file_id}</span>
-    </div>
-    <Badge variant="outline" className="text-xs">
-      {Math.round(item.score * 100)}% coincidir
-    </Badge>
-  </div>
+              <div className="flex-1 text-xs sm:text-sm text-gray-800">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-1 sm:gap-0 mb-2">
+                  <div className="flex flex-wrap gap-1 sm:gap-2 items-center">
+                    <span className="font-semibold">{item.case_type}</span>
+                    <span className="hidden sm:inline text-gray-400">|</span>
+                    {item.date && (
+                      <>
+                        <span className="text-gray-600">{item.date}</span>
+                        <span className="hidden sm:inline text-gray-400">|</span>
+                      </>
+                    )}
+                    <span>file-{item.file_id}</span>
+                  </div>
+                  <Badge variant="outline" className="text-xs w-fit">
+                    {Math.round(item.score * 100)}% coincidir
+                  </Badge>
+                </div>
                 
                 {/* Content with conditional blur */}
-                <p className={`text-sm text-gray-700 ${isLocked ? "blur-[2px]" : ""}`}>
+                <p className={`text-xs sm:text-sm text-gray-700 ${isLocked ? "blur-[2px]" : ""}`}>
                   {expandedIndex === index
                     ? item.text
-                    : `${item.text.slice(0, 150)}...`}
+                    : `${item.text.slice(0, 100)}${item.text.length > 100 ? '...' : ''}`}
                 </p>
                 
                 {/* Action buttons row */}
-                <div className={`flex items-center gap-4 mt-2 text-xs ${isLocked ? "blur-[2px]" : ""}`}>
+                <div className={`flex flex-wrap items-center gap-2 sm:gap-4 mt-2 text-[10px] sm:text-xs ${isLocked ? "blur-[2px]" : ""}`}>
                   {/* Toggle expand/collapse */}
                   <button
                     onClick={() => !isLocked && setExpandedIndex(index === expandedIndex ? null : index)}
@@ -81,8 +81,8 @@ export default function ReferencesSection({
                     rel="noopener noreferrer"
                     className="text-blue-600 hover:underline flex items-center gap-1"
                   >
-                    <span>[Haga clic para ver el documento]</span>
-                    <ExternalLink size={12} />
+                    <span>[Ver documento]</span>
+                    <ExternalLink size={10} className="sm:w-3 sm:h-3" />
                   </a>
                   
                   {/* Summary Dialog */}
@@ -92,12 +92,12 @@ export default function ReferencesSection({
                         [Ver resumen]
                       </button>
                     </DialogTrigger>
-                    <DialogContent className="sm:max-w-md">
+                    <DialogContent className="w-[95vw] max-w-md mx-auto">
                       <DialogHeader>
                         <DialogTitle>Resumen del documento</DialogTitle>
                       </DialogHeader>
-                      <div className="p-4">
-                        <p className="text-sm text-gray-700">{item.file_summary}</p>
+                      <div className="p-3 sm:p-4">
+                        <p className="text-xs sm:text-sm text-gray-700">{item.file_summary}</p>
                       </div>
                     </DialogContent>
                   </Dialog>
@@ -107,18 +107,18 @@ export default function ReferencesSection({
               {/* Login overlay for locked items */}
               {isLocked && (
                 <div className="absolute inset-0 bg-red-50/50 border-2 border-red-200 rounded-lg flex items-center justify-center z-10">
-                  <div className="bg-white p-3 rounded-lg shadow-sm flex items-center gap-2">
+                  <div className="bg-white p-2 sm:p-3 rounded-lg shadow-sm flex flex-col sm:flex-row items-center gap-2">
                     {!isSignedIn ? (
                       <>
-                        <LogIn size={18} className="text-red-500" />
-                        <span className="text-sm font-medium">Inicie sesión para ver</span>
+                        <LogIn size={16} className="text-red-500" />
+                        <span className="text-xs sm:text-sm font-medium text-center sm:text-left">Inicie sesión para ver</span>
                       </>
                     ) : (
                       <>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-500">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-500">
                           <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
                         </svg>
-                        <span className="text-sm font-medium">Activar premium para ver</span>
+                        <span className="text-xs sm:text-sm font-medium text-center sm:text-left">Activar premium para ver</span>
                       </>
                     )}
                   </div>

@@ -1,12 +1,13 @@
 'use client'
 // components/ChatPage/ChatSideBar.tsx
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { MessageSquare, Plus } from 'lucide-react';
+import { MessageSquare, Plus, Menu, X } from 'lucide-react';
 import { useSessions } from '@/lib/sessions-context';
 
 export default function ChatSidebar() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   const router = useRouter();
   const pathname = usePathname();
@@ -17,12 +18,40 @@ export default function ChatSidebar() {
   // Extract chatId from the URL if it exists
   const activeChatId = pathname && pathname !== '/' ? pathname.substring(1) : null;
 
+  // Handle window resize to adjust sidebar state
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 768) {
+        setIsSidebarOpen(false);
+      } else {
+        setIsSidebarOpen(true);
+      }
+    };
+
+    // Set initial state based on screen size
+    handleResize();
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const handleNewChat = () => {
     router.push('/');
+    if (window.innerWidth < 768) {
+      setIsMobileMenuOpen(false);
+    }
   };
 
   const handleSelectChat = (sessionId: string) => {
     router.push(`/${sessionId}`);
+    if (window.innerWidth < 768) {
+      setIsMobileMenuOpen(false);
+    }
+  };
+
+  // Toggle mobile menu
+  const toggleMobileMenu = () => {
+    setIsMobileMenuOpen(!isMobileMenuOpen);
   };
 
   // Helper function to get the first user message from the chat for preview
@@ -53,92 +82,127 @@ export default function ChatSidebar() {
     }
   };
 
+  // Mobile menu button - only visible on small screens
+  const MobileMenuButton = () => (
+    <button 
+      className="md:hidden fixed top-16 left-4 z-20 p-2 bg-white border border-gray-200 rounded-md shadow-sm"
+      onClick={toggleMobileMenu}
+      aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
+    >
+      {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+    </button>
+  );
+
   return (
-    <aside className={`h-full bg-gray-50 border-r border-gray-200 transition-all duration-300 ${isSidebarOpen ? 'w-72' : 'w-16'}`}>
-      <div className="flex flex-col h-full">
-        {/* Header with toggle */}
-        <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-          {isSidebarOpen && <h2 className="font-medium text-gray-800">Conversations</h2>}
-          <button 
-            className="p-1.5 rounded-md hover:bg-gray-200 text-gray-600"
-            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          >
-            {isSidebarOpen ? '«' : '»'}
-          </button>
-        </div>
-        
-        {/* New chat button */}
-        <div className="p-3">
-          <button 
-            className="w-full flex items-center justify-start px-3 py-2.5 bg-gray-900 hover:bg-black text-white rounded-md transition-colors"
-            onClick={handleNewChat}
-          >
-            <Plus size={16} className="mr-2" />
-            {isSidebarOpen && <span>New Chat</span>}
-          </button>
-        </div>
-        
-        {/* Sessions list */}
-        <div className="flex-1 overflow-y-auto px-2 py-2">
-          {/* Only show loading state when there are no sessions and it's loading */}
-          {loading && sessions.length === 0 ? (
-            <div className="flex justify-center py-8">
-              <div className="animate-spin h-5 w-5 border-2 border-t-gray-800 border-gray-300 rounded-full"></div>
-            </div>
-          ) : (
-            <div className="space-y-1">
-              {sessions.map((session) => {
-                const lastMessage = session.messages && session.messages.length > 0 
-                  ? session.messages[session.messages.length - 1] 
-                  : null;
-                const timestamp = lastMessage?.timestamp || "";
-                
-                return (
-                  <button
-                    key={session.session_id}
-                    className={`w-full flex items-start px-3 py-2.5 rounded-md text-left transition-colors ${
-                      activeChatId === session.session_id 
-                        ? 'bg-gray-200 text-gray-900' 
-                        : 'text-gray-700 hover:bg-gray-100'
-                    }`}
-                    onClick={() => handleSelectChat(session.session_id)}
-                  >
-                    <MessageSquare size={16} className="flex-shrink-0 mt-1 mr-3" />
-                    {isSidebarOpen && (
-                      <div className="flex-1 min-w-0">
-                        <div className="flex justify-between items-center w-full">
-                          <span className="truncate text-sm font-medium">
-                            {getChatPreview(session.messages)}
-                          </span>
-                          <span className="text-xs text-gray-500 ml-1 whitespace-nowrap">
-                            {formatTimestamp(timestamp)}
+    <>
+      <MobileMenuButton />
+      
+      <aside 
+        className={`h-full bg-gray-50 border-r border-gray-200 transition-all duration-300 
+          ${isSidebarOpen ? 'w-72 md:w-72' : 'w-16 md:w-16'} 
+          ${isMobileMenuOpen ? 'fixed inset-0 z-10 w-72' : 'hidden md:block'}`}
+      >
+        <div className="flex flex-col h-full">
+          {/* Header with toggle */}
+          <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+            {(isSidebarOpen || isMobileMenuOpen) && <h2 className="font-medium text-gray-800">Conversations</h2>}
+            <button 
+              className="p-1.5 rounded-md hover:bg-gray-200 text-gray-600 md:block hidden"
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            >
+              {isSidebarOpen ? '«' : '»'}
+            </button>
+            {isMobileMenuOpen && (
+              <button 
+                className="p-1.5 rounded-md hover:bg-gray-200 text-gray-600 md:hidden"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                <X size={20} />
+              </button>
+            )}
+          </div>
+          
+          {/* New chat button */}
+          <div className="p-3">
+            <button 
+              className="w-full flex items-center justify-start px-3 py-2.5 bg-gray-900 hover:bg-black text-white rounded-md transition-colors"
+              onClick={handleNewChat}
+            >
+              <Plus size={16} className="mr-2" />
+              {(isSidebarOpen || isMobileMenuOpen) && <span>New Chat</span>}
+            </button>
+          </div>
+          
+          {/* Sessions list */}
+          <div className="flex-1 overflow-y-auto px-2 py-2">
+            {/* Only show loading state when there are no sessions and it's loading */}
+            {loading && sessions.length === 0 ? (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin h-5 w-5 border-2 border-t-gray-800 border-gray-300 rounded-full"></div>
+              </div>
+            ) : (
+              <div className="space-y-1">
+                {sessions.map((session) => {
+                  const lastMessage = session.messages && session.messages.length > 0 
+                    ? session.messages[session.messages.length - 1] 
+                    : null;
+                  const timestamp = lastMessage?.timestamp || "";
+                  
+                  return (
+                    <button
+                      key={session.session_id}
+                      className={`w-full flex items-start px-3 py-2.5 rounded-md text-left transition-colors ${
+                        activeChatId === session.session_id 
+                          ? 'bg-gray-200 text-gray-900' 
+                          : 'text-gray-700 hover:bg-gray-100'
+                      }`}
+                      onClick={() => handleSelectChat(session.session_id)}
+                    >
+                      <MessageSquare size={16} className="flex-shrink-0 mt-1 mr-3" />
+                      {(isSidebarOpen || isMobileMenuOpen) && (
+                        <div className="flex-1 min-w-0">
+                          <div className="flex justify-between items-center w-full">
+                            <span className="truncate text-sm font-medium">
+                              {getChatPreview(session.messages)}
+                            </span>
+                            <span className="text-xs text-gray-500 ml-1 whitespace-nowrap">
+                              {formatTimestamp(timestamp)}
+                            </span>
+                          </div>
+                          <span className="text-xs text-gray-500 truncate block">
+                            {session.session_id.substring(0, 10)}...
                           </span>
                         </div>
-                        <span className="text-xs text-gray-500 truncate block">
-                          {session.session_id.substring(0, 10)}...
-                        </span>
-                      </div>
-                    )}
-                  </button>
-                );
-              })}
-              
-              {sessions.length === 0 && !loading && (
-                <div className="text-center py-8 px-2 text-gray-500 text-sm">
-                  {isSidebarOpen && "No conversations yet. Start a new chat!"}
-                </div>
-              )}
+                      )}
+                    </button>
+                  );
+                })}
+                
+                {sessions.length === 0 && !loading && (
+                  <div className="text-center py-8 px-2 text-gray-500 text-sm">
+                    {(isSidebarOpen || isMobileMenuOpen) && "No conversations yet. Start a new chat!"}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          
+          {/* Footer */}
+          {(isSidebarOpen || isMobileMenuOpen) && (
+            <div className="p-3 border-t border-gray-200 text-xs text-gray-500">
+              © 2025 Legal Assistant
             </div>
           )}
         </div>
-        
-        {/* Footer */}
-        {isSidebarOpen && (
-          <div className="p-3 border-t border-gray-200 text-xs text-gray-500">
-            © 2025 Legal Assistant
-          </div>
-        )}
-      </div>
-    </aside>
+      </aside>
+      
+      {/* Overlay for mobile - only visible when mobile menu is open */}
+      {isMobileMenuOpen && (
+        <div 
+          className="md:hidden fixed inset-0 bg-black bg-opacity-50 z-0"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+    </>
   );
 }

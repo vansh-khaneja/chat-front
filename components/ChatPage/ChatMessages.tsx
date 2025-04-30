@@ -65,17 +65,17 @@ export default function ChatMessages({
   isLoaded
 }: ChatMessagesProps) {
   return (
-    <div className="max-w-3xl mx-auto space-y-8">
+    <div className="w-full mx-auto space-y-8 px-3 sm:px-4 md:max-w-3xl">
       {/* Show login banner for signed out users with existing messages */}
       <SignedOut>
-        <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 shadow-sm text-center mb-4">
-          <div className="flex items-center justify-between">
+        <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 sm:p-4 shadow-sm text-center mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <div className="flex-1">
-              <h3 className="text-sm font-medium text-blue-800">Inicie sesión para obtener más personalización</h3>
+              <h3 className="text-xs sm:text-sm font-medium text-blue-800">Inicie sesión para obtener más personalización</h3>
             </div>
             <SignedOut>
               <SignInButton mode="modal">
-                <Button size="sm" variant="outline" className="flex items-center gap-1">
+                <Button size="sm" variant="outline" className="w-full sm:w-auto flex items-center gap-1 text-xs px-2 py-1 h-auto sm:h-8">
                   <LogIn size={14} />
                   Iniciar sesión
                 </Button>
@@ -86,10 +86,10 @@ export default function ChatMessages({
       </SignedOut>
       
       {chatLog.map((chat, i) => (
-        <div key={i} className="space-y-6">
+        <div key={i} className="space-y-4 sm:space-y-6">
           {/* User message - with light gray background and rounded corners */}
           <div className="flex justify-end">
-            <div className="bg-gray-100 px-5 py-3 rounded-2xl max-w-[80%]">
+            <div className="bg-gray-100 px-3 sm:px-5 py-2 sm:py-3 rounded-2xl max-w-[90%] sm:max-w-[80%]">
               {/* Display selected categories as badges */}
               {chat.categories && chat.categories.length > 0 && (
                 <div className="flex flex-wrap gap-1 mb-2">
@@ -100,13 +100,13 @@ export default function ChatMessages({
                   ))}
                 </div>
               )}
-              {chat.question}
+              <div className="text-sm sm:text-base">{chat.question}</div>
             </div>
           </div>
           
           {/* Bot message - clean, no background */}
           <div className="flex justify-start">
-            <div className="max-w-[80%]">
+            <div className="max-w-[90%] sm:max-w-[80%]">
               {chat.isLoading ? (
                 <div className="text-gray-600">
                   <LoadingAnalysis />
@@ -116,7 +116,7 @@ export default function ChatMessages({
                   <div className="text-xs text-gray-500 mb-2">
                     Razonado sobre el caso legal por un segundo 
                   </div>
-                  <div className="prose text-gray-800">
+                  <div className="prose prose-sm sm:prose text-gray-800 max-w-full">
                     {chat.isTyping ? (
                       <TypewriterText 
                         content={chat.response.answer} 
@@ -132,7 +132,7 @@ export default function ChatMessages({
                       variant="outline" 
                       size="sm"
                       onClick={toggleReferences}
-                      className="text-xs mt-4 flex items-center gap-1"
+                      className="text-xs mt-3 sm:mt-4 flex items-center gap-1 h-auto px-2 py-1 sm:h-8 sm:px-3"
                     >
                       {showReferences ? (
                         <>
