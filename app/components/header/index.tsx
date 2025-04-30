@@ -24,7 +24,7 @@ export default function Header() {
       if (userId) {
         try {
           setLoading(true)
-          const response = await axios.post('http://localhost:5000/get_user', {
+          const response = await axios.post('https://lexscope-production.up.railway.app/get_user', {
             auth_id: userId
           })
           

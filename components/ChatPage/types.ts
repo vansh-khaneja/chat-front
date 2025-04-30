@@ -6,6 +6,7 @@ export interface MetadataItem {
     file_url: string;
     score: number;
     text: string;
+    date:string;
   }
   
   export interface ApiResponse {

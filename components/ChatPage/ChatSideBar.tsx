@@ -35,7 +35,7 @@ export default function ChatSidebar() {
       }
       
       const response = await axios.post(
-        "http://localhost:5000/get_unique_session_ids",
+        "https://lexscope-production.up.railway.app/get_unique_session_ids",
         { auth_id: userId },
         {
           headers: {

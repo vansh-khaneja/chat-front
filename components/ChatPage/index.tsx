@@ -48,7 +48,7 @@ const fetchChatHistory = async () => {
   
   try {
     const response = await axios.post(
-      "http://localhost:5000/get_chat_history",
+      "https://lexscope-production.up.railway.app/get_chat_history",
       {
         auth_id: userId,
         session_id: chatId
@@ -112,7 +112,7 @@ const saveChatMessage = async (sender: string, message: string) => {
   
   try {
     const response = await axios.post(
-      "http://localhost:5000/add_chat_message",
+      "https://lexscope-production.up.railway.app/add_chat_message",
       {
         auth_id: userId,
         session_id: chatId,
@@ -151,7 +151,7 @@ const saveChatMessage = async (sender: string, message: string) => {
     
     try {
       const response = await axios.post(
-        "http://localhost:5000/append_context_history", 
+        "https://lexscope-production.up.railway.app/append_context_history", 
         { 
           auth_id: userId,
           context: collectedIds,
@@ -197,11 +197,14 @@ useEffect(() => {
   // Add this useEffect to handle the pending question when redirected from home page
 // Add this useEffect to handle the pending question when redirected from home page
 // Add this useEffect after your other useEffects in the ChatPage component
+// Modified useEffect for handling pending questions
 useEffect(() => {
   const pendingQuestion = sessionStorage.getItem('pendingQuestion');
   const pendingCategoriesJson = sessionStorage.getItem('pendingCategories');
+  const shouldProcessQuestion = sessionStorage.getItem('shouldProcessQuestion');
   
-  if (pendingQuestion && chatId && chatLog.length === 0) {
+  // Only process the question if the flag is set and we have a chatId
+  if (pendingQuestion && chatId && shouldProcessQuestion === 'true' && chatLog.length === 0) {
     // Get any pending categories
     let pendingCategories: string[] = [];
     if (pendingCategoriesJson) {
@@ -226,7 +229,7 @@ useEffect(() => {
     const fetchAnswer = async () => {
       try {
         const res = await axios.post(
-          "http://localhost:5000/retrieve", 
+          "https://lexscope-production.up.railway.app/retrieve", 
           { 
             question: pendingQuestion,
             categories: pendingCategories,
@@ -271,25 +274,7 @@ useEffect(() => {
           
           // Immediately send the updated IDs to the backend if user is authenticated
           if (isLoaded && isSignedIn && userId) {
-            try {
-              const contextResponse = await axios.post(
-                "http://localhost:5000/append_context_history", 
-                { 
-                  auth_id: userId,
-                  context: updatedIds,
-                  chat_id: chatId
-                },
-                {
-                  headers: {
-                    'Content-Type': 'application/json'
-                  }
-                }
-              );
-              
-              console.log("Context history updated:", contextResponse.data);
-            } catch (error) {
-              console.error("Error updating context history:", error);
-            }
+            await updateContextHistory(updatedIds);
           }
         }
         
@@ -325,17 +310,19 @@ useEffect(() => {
         // Clear the pending question from sessionStorage
         sessionStorage.removeItem('pendingQuestion');
         sessionStorage.removeItem('pendingCategories');
+        sessionStorage.removeItem('shouldProcessQuestion');
       }
     };
     
     fetchAnswer();
   }
 }, [chatId, chatLog.length, userId, isLoaded, isSignedIn, collectedIds]);
-// Helper functions to make the code cleaner
+
+
 const updateContextHistory = async (updatedIds: number[]) => {
   try {
     const contextResponse = await axios.post(
-      "http://localhost:5000/append_context_history", 
+      "https://lexscope-production.up.railway.app/append_context_history", 
       { 
         auth_id: userId,
         context: updatedIds,
@@ -410,7 +397,7 @@ const handleApiError = (question: string, categories: string[]) => {
       const registerUser = async () => {
         try {
           const response = await axios.post(
-            "http://localhost:5000/add_user",
+            "https://lexscope-production.up.railway.app/add_user",
             { auth_id: userId },
             {
               headers: {
@@ -434,7 +421,7 @@ const handleApiError = (question: string, categories: string[]) => {
       if (userId) {
         try {
           const response = await axios.post(
-            "http://localhost:5000/get_user", 
+            "https://lexscope-production.up.railway.app/get_user", 
             { auth_id: userId },
             {
               headers: {
@@ -524,172 +511,126 @@ const handleApiError = (question: string, categories: string[]) => {
     };
   };
 
-  const handleSubmit = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!question.trim()) return;
+ // Modified handleSubmit function to prevent double requests
+const handleSubmit = async (e?: React.FormEvent) => {
+  if (e) e.preventDefault();
+  if (!question.trim()) return;
+  
+  const newQuestion = question;
+  
+  // Clear the input early
+  setQuestion("");
+  
+  // Generate and navigate to UUID URL on first message if we don't have a chatId yet
+  if (chatLog.length === 0 && !chatId) {
+    // Generate UUID
+    const newChatId = uuidv4();
+    setChatId(newChatId);
+    window.dispatchEvent(new Event('chatCreated'));
     
-    const newQuestion = question;
-    
-    // Clear the input early
-    setQuestion("");
-    
-    // Generate and navigate to UUID URL on first message if we don't have a chatId yet
-    if (chatLog.length === 0 && !chatId) {
-      // First, add the message to the chat log
-      setChatLog([{ 
-        question: newQuestion,
-        categories: [...selectedCategories],
-        isLoading: true 
-      }]);
-      
-      // Generate UUID
-      const newChatId = uuidv4();
-      setChatId(newChatId);
-      window.dispatchEvent(new Event('chatCreated'));
-      // Set loading and update message count
-      setLoading(true);
-      const newCount = messageCount + 1;
-      setMessageCount(newCount);
-      saveMessageData(newCount);
-      
-      // Check limit
-      if (newCount > 5 && !isSignedIn) {
-        setShowLimitMessage(true);
-        setLoading(false);
-        return;
-      }
-      
-      // Store question in sessionStorage to preserve it across navigation
-      sessionStorage.setItem('pendingQuestion', newQuestion);
-      sessionStorage.setItem('pendingCategories', JSON.stringify(selectedCategories));
-      
-      // Navigate to the UUID page
-      router.push(`/${newChatId}`);
-      return; // Return to let the new page handle the API call
-    }
-    
-    // For subsequent messages or if we already have a chatId
+    // Update message count 
     const newCount = messageCount + 1;
+    setMessageCount(newCount);
+    saveMessageData(newCount);
+    
+    // Check limit
     if (newCount > 5 && !isSignedIn) {
       setShowLimitMessage(true);
       return;
     }
     
-    setChatLog(prev => [...prev, { 
-      question: newQuestion,
-      categories: [...selectedCategories],
-      isLoading: true 
-    }]);
+    // Store question and categories in sessionStorage
+    // Add a flag to indicate this is a pending question that should be processed after navigation
+    sessionStorage.setItem('pendingQuestion', newQuestion);
+    sessionStorage.setItem('pendingCategories', JSON.stringify(selectedCategories));
+    sessionStorage.setItem('shouldProcessQuestion', 'true');
     
-    setMessageCount(newCount);
-    saveMessageData(newCount);
-    setLoading(true);
-    
-    // Save the user's message to the chat history
-    await saveChatMessage("user", newQuestion);
-    
-    try {
-      const res = await axios.post(
-        "http://localhost:5000/retrieve", 
-        { 
-          question: newQuestion,
-          categories: selectedCategories,
-          auth_id: userId,
-          chat_id: chatId
-        },
-        {
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-      
-      // Process the response to handle different formats
-      const processedResponse = processApiResponse(res.data);
-      
-      // Save the AI's response to the chat history
-      await saveChatMessage("ai", processedResponse.answer);
-      
-      // Extract IDs from the metadata
-      if (processedResponse.metadata && processedResponse.metadata.length > 0) {
-        const newIds = extractIdsFromMetadata(processedResponse.metadata);
-        
-        // Add new IDs to the collected IDs
-        const updatedIds = [...new Set([...collectedIds, ...newIds])];
-        setCollectedIds(updatedIds);
-        
-        // Immediately send the updated IDs to the backend if user is authenticated
-        if (isLoaded && isSignedIn && userId) {
-          try {
-            const contextResponse = await axios.post(
-              "http://localhost:5000/append_context_history", 
-              { 
-                auth_id: userId,
-                context: updatedIds,
-                chat_id: chatId
-              },
-              {
-                headers: {
-                  'Content-Type': 'application/json'
-                }
-              }
-            );
-            
-            console.log("Context history updated:", contextResponse.data);
-          } catch (error) {
-            console.error("Error updating context history:", error);
-          }
+    // Navigate to the UUID page without setting loading state or updating chatLog
+    // Let the new page handle the API call and UI updates
+    router.push(`/${newChatId}`);
+    return;
+  }
+  
+  // For subsequent messages or if we already have a chatId
+  const newCount = messageCount + 1;
+  if (newCount > 5 && !isSignedIn) {
+    setShowLimitMessage(true);
+    return;
+  }
+  
+  setChatLog(prev => [...prev, { 
+    question: newQuestion,
+    categories: [...selectedCategories],
+    isLoading: true 
+  }]);
+  
+  setMessageCount(newCount);
+  saveMessageData(newCount);
+  setLoading(true);
+  
+  // Save the user's message to the chat history
+  await saveChatMessage("user", newQuestion);
+  
+  try {
+    const res = await axios.post(
+      "https://lexscope-production.up.railway.app/retrieve", 
+      { 
+        question: newQuestion,
+        categories: selectedCategories,
+        auth_id: userId,
+        chat_id: chatId
+      },
+      {
+        headers: {
+          'Content-Type': 'application/json'
         }
       }
+    );
+    
+    // Process the response to handle different formats
+    const processedResponse = processApiResponse(res.data);
+    
+    // Save the AI's response to the chat history
+    await saveChatMessage("ai", processedResponse.answer);
+    
+    // Extract IDs from the metadata
+    if (processedResponse.metadata && processedResponse.metadata.length > 0) {
+      const newIds = extractIdsFromMetadata(processedResponse.metadata);
       
-      // Update with processed response and begin typing animation
-      setChatLog(prev => {
-        const newLog = [...prev];
-        const lastIndex = newLog.length - 1;
-        if (lastIndex >= 0) {
-          newLog[lastIndex] = { 
-            question: newQuestion,
-            categories: newLog[lastIndex].categories,
-            response: processedResponse,
-            isLoading: false,
-            isTyping: true
-          };
-        }
-        return newLog;
-      });
+      // Add new IDs to the collected IDs
+      const updatedIds = [...new Set([...collectedIds, ...newIds])];
+      setCollectedIds(updatedIds);
       
-      setShowReferences(false);
-    } catch (err) {
-      console.error("Error fetching answer:", err);
-      
-      // Create error response
-      const errorResponse: ApiResponse = {
-        answer: "Sorry, I couldn't process your request. Please try again.",
-        metadata: []
-      };
-      
-      // Save the error response to chat history
-      await saveChatMessage("ai", errorResponse.answer);
-      
-      // Update with error state
-      setChatLog(prev => {
-        const newLog = [...prev];
-        const lastIndex = newLog.length - 1;
-        if (lastIndex >= 0) {
-          newLog[lastIndex] = { 
-            question: newQuestion,
-            categories: newLog[lastIndex].categories,
-            response: errorResponse,
-            isLoading: false,
-            isTyping: true
-          };
-        }
-        return newLog;
-      });
-    } finally {
-      setLoading(false);
+      // Immediately send the updated IDs to the backend if user is authenticated
+      if (isLoaded && isSignedIn && userId) {
+        await updateContextHistory(updatedIds);
+      }
     }
-  };
+    
+    // Update with processed response and begin typing animation
+    setChatLog(prev => {
+      const newLog = [...prev];
+      const lastIndex = newLog.length - 1;
+      if (lastIndex >= 0) {
+        newLog[lastIndex] = { 
+          question: newQuestion,
+          categories: newLog[lastIndex].categories,
+          response: processedResponse,
+          isLoading: false,
+          isTyping: true
+        };
+      }
+      return newLog;
+    });
+    
+    setShowReferences(false);
+  } catch (err) {
+    console.error("Error fetching answer:", err);
+    handleApiError(newQuestion, selectedCategories);
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Called when typing animation completes
   const handleTypingComplete = (index: number) => {

@@ -23,24 +23,30 @@ export default function CategorySelector({ selectedCategories, toggleCategory }:
   return (
     <>
       <CategoryButton 
-        id="criminal"
-        label="Criminal"
-        isSelected={selectedCategories.includes('criminal')}
-        onClick={() => toggleCategory('criminal')}
+        id="penal"
+        label="penal"
+        isSelected={selectedCategories.includes('penal')}
+        onClick={() => toggleCategory('penal')}
       />
       
       <CategoryButton 
         id="civil"
-        label="Civil"
+        label="civil"
         isSelected={selectedCategories.includes('civil')}
         onClick={() => toggleCategory('civil')}
       />
+      <CategoryButton 
+        id="labor"
+        label="labor"
+        isSelected={selectedCategories.includes('labor')}
+        onClick={() => toggleCategory('labor')}
+      />
       
       <CategoryButton 
-        id="family"
-        label="Family"
-        isSelected={selectedCategories.includes('family')}
-        onClick={() => toggleCategory('family')}
+        id="constitutional"
+        label="constitutional"
+        isSelected={selectedCategories.includes('constitutional')}
+        onClick={() => toggleCategory('constitutional')}
       />
     </>
   );
