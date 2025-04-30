@@ -8,7 +8,8 @@ import {
 import "./globals.css"
 import Header from './components/header'
 import ChatSidebar from '@/components/ChatPage/ChatSideBar'
-import { PremiumProvider } from '@/lib/premium-context'  // Import the new provider
+import { PremiumProvider } from '@/lib/premium-context'
+import { SessionsProvider } from '@/lib/sessions-context' // Import the new provider
 
 export default function RootLayout({
   children,
@@ -19,18 +20,20 @@ export default function RootLayout({
     <ClerkProvider>
       <html lang="en">
         <body>
-          <PremiumProvider>  {/* Wrap the app with PremiumProvider */}
-            <main className="min-h-screen">
-              <Header/>
-              <div className="flex h-[calc(100vh-64px)]">
-                <SignedIn>
-                  <ChatSidebar />
-                </SignedIn>
-                <div className="flex-1">
-                  {children}
+          <PremiumProvider>
+            <SessionsProvider> {/* Add the new provider */}
+              <main className="min-h-screen">
+                <Header/>
+                <div className="flex h-[calc(100vh-64px)]">
+                  <SignedIn>
+                    <ChatSidebar />
+                  </SignedIn>
+                  <div className="flex-1">
+                    {children}
+                  </div>
                 </div>
-              </div>
-            </main>
+              </main>
+            </SessionsProvider>
           </PremiumProvider>
         </body>
       </html>
