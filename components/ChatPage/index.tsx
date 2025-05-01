@@ -86,9 +86,9 @@ export default function ChatPage({ initialChatId = null }: ChatPageProps) {
   };
 
   // Save chat message to backend
-  const saveChatMessage = async (sender: string, message: string) => {
+  const saveChatMessage = async (sender: string, message: string,metadata:any) => {
     if (!chatId || !userId) return;
-    
+    console.log("Saving chat message:", { sender, message, metadata });
     try {
       // Using the new endpoint /add_chat instead of /add_chat_message
       const response = await axios.post(
@@ -97,7 +97,8 @@ export default function ChatPage({ initialChatId = null }: ChatPageProps) {
           auth_id: userId,
           session_id: chatId,
           sender: sender,
-          message: message
+          message: message,
+          metadata:{"metadata":metadata}
         },
         {
           headers: {
@@ -207,7 +208,7 @@ export default function ChatPage({ initialChatId = null }: ChatPageProps) {
     
     // Save user message
     if (userId) {
-      await saveChatMessage("user", pendingQuestion);
+      await saveChatMessage("user", pendingQuestion,{});
     }
     
     try {
@@ -234,7 +235,8 @@ export default function ChatPage({ initialChatId = null }: ChatPageProps) {
       
       // Save AI response
       if (userId) {
-        await saveChatMessage("ai", formattedResponse.answer);
+        await saveChatMessage("ai", formattedResponse.answer,formattedResponse.metadata);
+        console.log("AI response saved:", formattedResponse.metadata);
       }
       
       // Update chat log with response
@@ -315,7 +317,7 @@ export default function ChatPage({ initialChatId = null }: ChatPageProps) {
     setLoading(true);
     
     // Save the user's message to the chat history
-    await saveChatMessage("user", newQuestion);
+    await saveChatMessage("user", newQuestion,{});
     
     try {
       // Use the new API endpoint and request structure
@@ -343,7 +345,7 @@ export default function ChatPage({ initialChatId = null }: ChatPageProps) {
       };
       
       // Save the AI's response to the chat history
-      await saveChatMessage("ai", formattedResponse.answer);
+      await saveChatMessage("ai", formattedResponse.answer,formattedResponse.metadata);
       
       // Update chat log with the response
       setChatLog(prev => {

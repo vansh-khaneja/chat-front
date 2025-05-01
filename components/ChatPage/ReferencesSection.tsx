@@ -1,4 +1,5 @@
 // components/ChatPage/ReferencesSection.tsx
+'use client'
 import React from "react";
 import { Badge } from "@/components/ui/badge";
 import { LogIn, ExternalLink } from "lucide-react";
@@ -10,6 +11,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { ReferencesSectionProps } from "./types";
+import { useUser,  SignInButton,
+} from '@clerk/nextjs'
 
 export default function ReferencesSection({ 
   metadata, 
@@ -19,6 +22,22 @@ export default function ReferencesSection({
   isPremium,
   isLoaded
 }: ReferencesSectionProps) {
+
+
+  const { user } = useUser()
+  const email = user?.primaryEmailAddress?.emailAddress
+  const handleActivatePro = async () => {
+    const res = await fetch('/api/create-checkout-session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+
+    const data = await res.json();
+    window.location.href = data.url;
+  };
+
+
   return (
     <div className="mt-4 sm:mt-6 space-y-1">
       {metadata.map((item, index) => {
@@ -111,14 +130,27 @@ export default function ReferencesSection({
                     {!isSignedIn ? (
                       <>
                         <LogIn size={16} className="text-red-500" />
-                        <span className="text-xs sm:text-sm font-medium text-center sm:text-left">Inicie sesión para ver</span>
+                        <SignInButton mode="modal">
+
+                        <button 
+                          className="text-xs sm:text-sm font-medium text-center sm:text-left hover:text-red-600 transition-colors cursor-pointer"
+                        >
+                          Inicie sesión para ver
+                        </button>
+                        </SignInButton>
+
                       </>
                     ) : (
                       <>
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-500">
                           <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
                         </svg>
-                        <span className="text-xs sm:text-sm font-medium text-center sm:text-left">Activar premium para ver</span>
+                        <button 
+                          onClick={handleActivatePro}
+                          className="text-xs sm:text-sm font-medium text-center sm:text-left hover:text-red-600 transition-colors cursor-pointer"
+                        >
+                          Activar premium para ver
+                        </button>
                       </>
                     )}
                   </div>

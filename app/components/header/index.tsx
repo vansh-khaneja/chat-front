@@ -13,7 +13,6 @@ import { useState } from 'react'
 import { Menu, X } from 'lucide-react'
 
 export default function Header() {
-  // Use the centralized premium context instead of local state
   const { isPremium, loading } = usePremium() 
   const { user } = useUser()
   const email = user?.primaryEmailAddress?.emailAddress
@@ -36,34 +35,38 @@ export default function Header() {
 
   return (
     <header className="flex justify-between items-center p-3 shadow-md bg-white border-b border-gray-200 relative z-20">
-      {/* Logo and Brand */}
-      <div className="flex items-center gap-2">
-        {/* Scale icon as logo */}
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="text-black w-5 h-5"
-        >
-          <path d="M8 3v2m8-2v2M8 21v-2m8 2v-2M3 8h2m-2 8h2m14-8h2m-2 8h2M3 12h18M12 3v18"/>
-        </svg>
-        <div>
-          <h1 className="text-lg font-semibold text-black">LawBot</h1>
-          <p className="text-xs text-gray-500 hidden sm:block">Tu asistente legal con IA</p>
+      {/* Logo container with conditional centering for mobile */}
+      <div className="flex-1 flex sm:justify-start justify-center items-center">
+        {/* Logo and brand - now centered on mobile */}
+        <div className="flex items-center gap-2 sm:ml-10">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="text-black w-5 h-5"
+          >
+            <path d="M8 3v2m8-2v2M8 21v-2m8 2v-2M3 8h2m-2 8h2m14-8h2m-2 8h2M3 12h18M12 3v18"/>
+          </svg>
+          <div>
+            <h1 className="text-lg font-semibold text-black">LexScope</h1>
+            <p className="text-xs text-gray-500 hidden sm:block">Tu asistente legal con IA</p>
+          </div>
         </div>
       </div>
       
-      {/* Mobile menu button */}
-      <button 
-        className="sm:hidden p-2 text-gray-500 focus:outline-none"
-        onClick={toggleMobileMenu}
-      >
-        {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
-      </button>
+      {/* Mobile menu button - positioned absolute for better layout */}
+      <div className="absolute right-3 sm:hidden flex items-center h-full">
+        <button 
+          className="text-gray-500 focus:outline-none p-2"
+          onClick={toggleMobileMenu}
+        >
+          {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+        </button>
+      </div>
       
       {/* Authentication Buttons - Desktop */}
       <div className="hidden sm:flex items-center gap-3">
@@ -133,7 +136,7 @@ export default function Header() {
               >
                 <path d="M8 3v2m8-2v2M8 21v-2m8 2v-2M3 8h2m-2 8h2m14-8h2m-2 8h2M3 12h18M12 3v18"/>
               </svg>
-              <h1 className="text-lg font-semibold text-black">LawBot</h1>
+              <h1 className="text-lg font-semibold text-black">LexScope</h1>
             </div>
             <button 
               onClick={toggleMobileMenu}

@@ -82,10 +82,10 @@ export default function ChatSidebar() {
     }
   };
 
-  // Mobile menu button - only visible on small screens
+  // Mobile menu button - only visible on small screens - UPDATED position
   const MobileMenuButton = () => (
     <button 
-      className="md:hidden fixed top-16 left-4 z-20 p-2 bg-white border border-gray-200 rounded-md shadow-sm"
+      className="md:hidden fixed top-3 left-4 z-20 p-2 bg-white border border-gray-200 rounded-md shadow-sm"
       onClick={toggleMobileMenu}
       aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
     >
@@ -106,20 +106,23 @@ export default function ChatSidebar() {
           {/* Header with toggle */}
           <div className="p-4 border-b border-gray-200 flex items-center justify-between">
             {(isSidebarOpen || isMobileMenuOpen) && <h2 className="font-medium text-gray-800">Conversations</h2>}
-            <button 
-              className="p-1.5 rounded-md hover:bg-gray-200 text-gray-600 md:block hidden"
-              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            >
-              {isSidebarOpen ? '«' : '»'}
-            </button>
-            {isMobileMenuOpen && (
+            
+            <div className="flex gap-2">
               <button 
-                className="p-1.5 rounded-md hover:bg-gray-200 text-gray-600 md:hidden"
-                onClick={() => setIsMobileMenuOpen(false)}
+                className="p-1.5 rounded-md hover:bg-gray-200 text-gray-600 md:block hidden"
+                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
               >
-                <X size={20} />
+                {isSidebarOpen ? '«' : '»'}
               </button>
-            )}
+              {isMobileMenuOpen && (
+                <button 
+                  className="p-1.5 rounded-md hover:bg-gray-200 text-gray-600 md:hidden"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <X size={20} />
+                </button>
+              )}
+            </div>
           </div>
           
           {/* New chat button */}
@@ -196,11 +199,12 @@ export default function ChatSidebar() {
         </div>
       </aside>
       
-      {/* Overlay for mobile - only visible when mobile menu is open */}
+      {/* Overlay for mobile - Fixed to cover only what's behind the sidebar */}
       {isMobileMenuOpen && (
         <div 
-          className="md:hidden fixed inset-0 bg-black bg-opacity-50 z-0"
+          className="md:hidden fixed inset-0 bg-black/50 z-0"
           onClick={() => setIsMobileMenuOpen(false)}
+          style={{ width: "100%", left: "0", right: "0" }}
         />
       )}
     </>
