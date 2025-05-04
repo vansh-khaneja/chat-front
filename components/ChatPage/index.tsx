@@ -1,3 +1,4 @@
+// components/ChatPage/index.tsx
 'use client'
 import React, { useState, useRef, useEffect } from "react";
 import axios from "axios";
@@ -86,7 +87,7 @@ export default function ChatPage({ initialChatId = null }: ChatPageProps) {
   };
 
   // Save chat message to backend
-  const saveChatMessage = async (sender: string, message: string,metadata:any) => {
+  const saveChatMessage = async (sender: string, message: string, metadata: any) => {
     if (!chatId || !userId) return;
     console.log("Saving chat message:", { sender, message, metadata });
     try {
@@ -98,7 +99,7 @@ export default function ChatPage({ initialChatId = null }: ChatPageProps) {
           session_id: chatId,
           sender: sender,
           message: message,
-          metadata:{"metadata":metadata}
+          metadata: {"metadata": metadata}
         },
         {
           headers: {
@@ -118,47 +119,46 @@ export default function ChatPage({ initialChatId = null }: ChatPageProps) {
     }
   };
 
-  // Format chat history to chat log - updated for new structure
- // Format chat history to chat log - updated to handle metadata correctly
- const formatChatHistoryToLog = (messages: any[]): ChatMessage[] => {
-  const formattedLog: ChatMessage[] = [];
-  
-  // Group messages by user-ai pairs
-  for (let i = 0; i < messages.length; i++) {
-    const currentMessage = messages[i];
+  // Format chat history to chat log
+  const formatChatHistoryToLog = (messages: any[]): ChatMessage[] => {
+    const formattedLog: ChatMessage[] = [];
     
-    if (currentMessage.role === "user") {
-      // Look ahead for the next AI response
-      const nextMessage = i + 1 < messages.length ? messages[i + 1] : null;
-      const isAiResponse = nextMessage && nextMessage.role === "ai";
+    // Group messages by user-ai pairs
+    for (let i = 0; i < messages.length; i++) {
+      const currentMessage = messages[i];
       
-      const chatEntry: ChatMessage = {
-        question: currentMessage.content,
-        categories: [],
-      };
-      
-      // If we have an AI response, add it
-      if (isAiResponse) {
-        let processedMetadata = [];
+      if (currentMessage.role === "user") {
+        // Look ahead for the next AI response
+        const nextMessage = i + 1 < messages.length ? messages[i + 1] : null;
+        const isAiResponse = nextMessage && nextMessage.role === "ai";
         
-        // Process metadata if exists
-        if (nextMessage.metadata) {
-          processedMetadata = formatMetadata(nextMessage.metadata);
+        const chatEntry: ChatMessage = {
+          question: currentMessage.content,
+          categories: [],
+        };
+        
+        // If we have an AI response, add it
+        if (isAiResponse) {
+          let processedMetadata = [];
+          
+          // Process metadata if exists
+          if (nextMessage.metadata) {
+            processedMetadata = formatMetadata(nextMessage.metadata);
+          }
+          
+          chatEntry.response = {
+            answer: nextMessage.content,
+            metadata: processedMetadata
+          };
+          i++; // Skip the next message since we've already processed it
         }
         
-        chatEntry.response = {
-          answer: nextMessage.content,
-          metadata: processedMetadata
-        };
-        i++; // Skip the next message since we've already processed it
+        formattedLog.push(chatEntry);
       }
-      
-      formattedLog.push(chatEntry);
     }
-  }
-  
-  return formattedLog;
-};
+    
+    return formattedLog;
+  };
 
   // Fetch chat history using the sessions context
   const loadChatHistory = async () => {
@@ -218,7 +218,7 @@ export default function ChatPage({ initialChatId = null }: ChatPageProps) {
     
     // Save user message
     if (userId) {
-      await saveChatMessage("user", pendingQuestion,{});
+      await saveChatMessage("user", pendingQuestion, {});
     }
     
     try {
@@ -246,7 +246,7 @@ export default function ChatPage({ initialChatId = null }: ChatPageProps) {
       
       // Save AI response
       if (userId) {
-        await saveChatMessage("ai", formattedResponse.answer,formattedResponse.metadata);
+        await saveChatMessage("ai", formattedResponse.answer, formattedResponse.metadata);
         console.log("AI response saved:", formattedResponse.metadata);
       }
       
@@ -279,6 +279,15 @@ export default function ChatPage({ initialChatId = null }: ChatPageProps) {
     if (e) e.preventDefault();
     if (!question.trim()) return;
     
+    // Check for limit first - if user isn't logged in and has reached limit, show message
+    const newCount = messageCount + 1;
+    if (newCount > 5 && !isSignedIn) {
+      setMessageCount(newCount);
+      saveMessageData(newCount);
+      setShowLimitMessage(true);
+      return;
+    }
+    
     const newQuestion = question;
     setQuestion("");
     
@@ -289,15 +298,8 @@ export default function ChatPage({ initialChatId = null }: ChatPageProps) {
       window.dispatchEvent(new Event('chatCreated'));
       
       // Update message count
-      const newCount = messageCount + 1;
       setMessageCount(newCount);
       saveMessageData(newCount);
-      
-      // Check limit
-      if (newCount > 5 && !isSignedIn) {
-        setShowLimitMessage(true);
-        return;
-      }
       
       // Instead of immediately navigating, we'll:
       // 1. Store the question for processing
@@ -311,12 +313,6 @@ export default function ChatPage({ initialChatId = null }: ChatPageProps) {
     }
     
     // For subsequent messages or if we already have a chatId
-    const newCount = messageCount + 1;
-    if (newCount > 5 && !isSignedIn) {
-      setShowLimitMessage(true);
-      return;
-    }
-    
     setChatLog(prev => [...prev, { 
       question: newQuestion,
       categories: [...selectedCategories],
@@ -328,7 +324,7 @@ export default function ChatPage({ initialChatId = null }: ChatPageProps) {
     setLoading(true);
     
     // Save the user's message to the chat history
-    await saveChatMessage("user", newQuestion,{});
+    await saveChatMessage("user", newQuestion, {});
     
     try {
       // Use the new API endpoint and request structure
@@ -356,7 +352,7 @@ export default function ChatPage({ initialChatId = null }: ChatPageProps) {
       };
       
       // Save the AI's response to the chat history
-      await saveChatMessage("ai", formattedResponse.answer,formattedResponse.metadata);
+      await saveChatMessage("ai", formattedResponse.answer, formattedResponse.metadata);
       
       // Update chat log with the response
       setChatLog(prev => {
@@ -478,9 +474,9 @@ export default function ChatPage({ initialChatId = null }: ChatPageProps) {
     setExpandedIndex(null); // Reset expanded state when toggling references
   };
 
-  // Load message data from cookies
+  // Check message limit on initial load
   useEffect(() => {
-    const loadMessageData = () => {
+    const checkMessageLimit = () => {
       const storedData = getCookie('messageData');
       if (storedData) {
         const parsedData = JSON.parse(storedData);
@@ -505,7 +501,7 @@ export default function ChatPage({ initialChatId = null }: ChatPageProps) {
       }
     };
     
-    loadMessageData();
+    checkMessageLimit();
   }, [isSignedIn]);
 
   // Register user
@@ -637,59 +633,74 @@ export default function ChatPage({ initialChatId = null }: ChatPageProps) {
               </SignedIn>
               
               <SignedOut>
-                <div className="bg-blue-50 border border-blue-100 rounded-lg p-6 shadow-sm text-center mb-4">
-                  <h3 className="text-lg font-medium text-blue-800 mb-2">Inicie sesión para una mejor experiencia</h3>
-                  <p className="text-blue-600 mb-4">Obtenga respuestas personalizadas adaptadas a sus preguntas legales.</p>
-                  <SignInButton mode="modal">
-                    <Button className="flex items-center gap-2">
-                      <LogIn size={18} />
-                      Iniciar sesión
-                    </Button>
-                  </SignInButton>
-                </div>
-                
-                {/* Limited functionality version */}
-                <div className="relative">
-                  <div className="bg-white border rounded-lg shadow-sm overflow-hidden">
-                    {/* Input with button row above */}
-                    <div className="flex items-center px-3 py-2 gap-2 border-b">
-                      <CategorySelector 
-                        selectedCategories={selectedCategories}
-                        toggleCategory={toggleCategory}
-                      />
-                      
-                      <div className="flex-1"></div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="rounded-full h-8 w-8 p-0 flex items-center justify-center text-gray-500"
-                      >
-                        <span className="text-xl">⋯</span>
+                {showLimitMessage ? (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-6 shadow-sm text-center mb-4">
+                    <h3 className="text-lg font-medium text-amber-800 mb-2">Has alcanzado el límite diario</h3>
+                    <p className="text-amber-700 mb-4">Inicia sesión para continuar haciendo preguntas y obtener acceso ilimitado.</p>
+                    <SignInButton mode="modal">
+                      <Button className="flex items-center gap-2">
+                        <LogIn size={18} />
+                        Iniciar sesión para acceso ilimitado
                       </Button>
+                    </SignInButton>
+                  </div>
+                ) : (
+                  <>
+                    <div className="bg-blue-50 border border-blue-100 rounded-lg p-6 shadow-sm text-center mb-4">
+                      <h3 className="text-lg font-medium text-blue-800 mb-2">Inicie sesión para una mejor experiencia</h3>
+                      <p className="text-blue-600 mb-4">Obtenga respuestas personalizadas adaptadas a sus preguntas legales.</p>
+                      <SignInButton mode="modal">
+                        <Button className="flex items-center gap-2">
+                          <LogIn size={18} />
+                          Iniciar sesión
+                        </Button>
+                      </SignInButton>
                     </div>
                     
-                    {/* Input field */}
-                    <form onSubmit={handleSubmit} className="flex items-center px-3 py-2">
-                      <Input
-                        placeholder="Haga una pregunta legal..."
-                        value={question}
-                        onChange={(e) => setQuestion(e.target.value)}
-                        className="border-0 shadow-none focus:ring-0 flex-1"
-                        disabled={loading}
-                      />
-                      <Button 
-                        type="submit" 
-                        disabled={loading}
-                        variant="ghost"
-                        size="sm"
-                        className="ml-2"
-                      >
-                        {loading ? "..." : <Send size={18} />}
-                      </Button>
-                    </form>
-                  </div>
-                </div>
+                    {/* Limited functionality version */}
+                    <div className="relative">
+                      <div className="bg-white border rounded-lg shadow-sm overflow-hidden">
+                        {/* Input with button row above */}
+                        <div className="flex items-center px-3 py-2 gap-2 border-b">
+                          <CategorySelector 
+                            selectedCategories={selectedCategories}
+                            toggleCategory={toggleCategory}
+                          />
+                          
+                          <div className="flex-1"></div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="rounded-full h-8 w-8 p-0 flex items-center justify-center text-gray-500"
+                          >
+                            <span className="text-xl">⋯</span>
+                          </Button>
+                        </div>
+                        
+                        {/* Input field */}
+                        <form onSubmit={handleSubmit} className="flex items-center px-3 py-2">
+                          <Input
+                            placeholder="Haga una pregunta legal..."
+                            value={question}
+                            onChange={(e) => setQuestion(e.target.value)}
+                            className="border-0 shadow-none focus:ring-0 flex-1"
+                            disabled={loading}
+                          />
+                          <Button 
+                            type="submit" 
+                            disabled={loading}
+                            variant="ghost"
+                            size="sm"
+                            className="ml-2"
+                          >
+                            {loading ? "..." : <Send size={18} />}
+                          </Button>
+                        </form>
+                      </div>
+                    </div>
+                  </>
+                )}
               </SignedOut>
             </div>
           </div>
@@ -717,61 +728,64 @@ export default function ChatPage({ initialChatId = null }: ChatPageProps) {
           {showLimitMessage && !isSignedIn && (
             <div className="max-w-3xl mx-auto mb-4">
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 shadow-sm text-center">
-                <h3 className="text-lg font-medium text-amber-800 mb-2">You've reached today's limit</h3>
-                <p className="text-amber-700 mb-4">Sign in to continue asking questions and get unlimited access.</p>
+                <h3 className="text-lg font-medium text-amber-800 mb-2">Has alcanzado el límite diario</h3>
+                <p className="text-amber-700 mb-4">Inicia sesión para continuar haciendo preguntas y obtener acceso ilimitado.</p>
                 <SignInButton mode="modal">
                   <Button className="flex items-center gap-2">
                     <LogIn size={18} />
-                    Sign in for unlimited access
+                    Iniciar sesión para acceso ilimitado
                   </Button>
                 </SignInButton>
               </div>
             </div>
           )}
           
-          <div className="max-w-3xl mx-auto">
-            <div className="relative">
-              <div className="bg-white border rounded-lg shadow-sm overflow-hidden">
-                {/* Input with button row above */}
-                <div className="flex items-center px-3 py-2 gap-2 border-b">
-                  <CategorySelector 
-                    selectedCategories={selectedCategories}
-                    toggleCategory={toggleCategory}
-                  />
+          {/* Only show input when not over limit or user is signed in */}
+          {(!showLimitMessage || isSignedIn) && (
+            <div className="max-w-3xl mx-auto">
+              <div className="relative">
+                <div className="bg-white border rounded-lg shadow-sm overflow-hidden">
+                  {/* Input with button row above */}
+                  <div className="flex items-center px-3 py-2 gap-2 border-b">
+                    <CategorySelector 
+                      selectedCategories={selectedCategories}
+                      toggleCategory={toggleCategory}
+                    />
+                    
+                    <div className="flex-1"></div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="rounded-full h-8 w-8 p-0 flex items-center justify-center text-gray-500"
+                    >
+                      <span className="text-xl">⋯</span>
+                    </Button>
+                  </div>
                   
-                  <div className="flex-1"></div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="rounded-full h-8 w-8 p-0 flex items-center justify-center text-gray-500"
-                  >
-                    <span className="text-xl">⋯</span>
-                  </Button>
+                  {/* Input field */}
+                  <form onSubmit={handleSubmit} className="flex items-center px-3 py-2">
+                    <Input
+                      placeholder="Ask a legal question..."
+                      value={question}
+                      onChange={(e) => setQuestion(e.target.value)}
+                      className="border-0 shadow-none focus:ring-0 flex-1"
+                      disabled={loading}
+                    />
+                    <Button 
+                      type="submit" 
+                      disabled={loading}
+                      variant="ghost"
+                      size="sm"
+                      className="ml-2"
+                    >
+                      {loading ? "..." : <Send size={18} />}
+                    </Button>
+                  </form>
                 </div>
-                
-                {/* Input field */}
-                <form onSubmit={handleSubmit} className="flex items-center px-3 py-2">
-                  <Input
-                    placeholder="Ask a legal question..."
-                    value={question}
-                    onChange={(e) => setQuestion(e.target.value)}
-                    className="border-0 shadow-none focus:ring-0 flex-1"
-                    disabled={loading}
-                  />
-                  <Button 
-                    type="submit" 
-                    disabled={loading}
-                    variant="ghost"
-                    size="sm"
-                    className="ml-2"
-                  >
-                    {loading ? "..." : <Send size={18} />}
-                  </Button>
-                </form>
               </div>
             </div>
-          </div>
+          )}
         </div>
       )}
     </div>
