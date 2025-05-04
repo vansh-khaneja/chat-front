@@ -65,7 +65,8 @@ export function SessionsProvider({ children }: { children: React.ReactNode }) {
           }
         }
       )
-      
+      console.log("Response data:", response.data) // Log the response data for debugging
+
       if (response.data && response.data.sessions && Array.isArray(response.data.sessions)) {
         setSessions(response.data.sessions)
         console.log("Sessions loaded successfully")

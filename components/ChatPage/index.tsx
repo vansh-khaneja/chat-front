@@ -119,38 +119,46 @@ export default function ChatPage({ initialChatId = null }: ChatPageProps) {
   };
 
   // Format chat history to chat log - updated for new structure
-  const formatChatHistoryToLog = (messages: any[]): ChatMessage[] => {
-    const formattedLog: ChatMessage[] = [];
+ // Format chat history to chat log - updated to handle metadata correctly
+ const formatChatHistoryToLog = (messages: any[]): ChatMessage[] => {
+  const formattedLog: ChatMessage[] = [];
+  
+  // Group messages by user-ai pairs
+  for (let i = 0; i < messages.length; i++) {
+    const currentMessage = messages[i];
     
-    // Group messages by user-ai pairs
-    for (let i = 0; i < messages.length; i++) {
-      const currentMessage = messages[i];
+    if (currentMessage.role === "user") {
+      // Look ahead for the next AI response
+      const nextMessage = i + 1 < messages.length ? messages[i + 1] : null;
+      const isAiResponse = nextMessage && nextMessage.role === "ai";
       
-      if (currentMessage.role === "user") {
-        // Look ahead for the next AI response
-        const nextMessage = i + 1 < messages.length ? messages[i + 1] : null;
-        const isAiResponse = nextMessage && nextMessage.role === "ai";
+      const chatEntry: ChatMessage = {
+        question: currentMessage.content,
+        categories: [],
+      };
+      
+      // If we have an AI response, add it
+      if (isAiResponse) {
+        let processedMetadata = [];
         
-        const chatEntry: ChatMessage = {
-          question: currentMessage.content,
-          categories: [],
-        };
-        
-        // If we have an AI response, add it
-        if (isAiResponse) {
-          chatEntry.response = {
-            answer: nextMessage.content,
-            metadata: []
-          };
-          i++; // Skip the next message since we've already processed it
+        // Process metadata if exists
+        if (nextMessage.metadata) {
+          processedMetadata = formatMetadata(nextMessage.metadata);
         }
         
-        formattedLog.push(chatEntry);
+        chatEntry.response = {
+          answer: nextMessage.content,
+          metadata: processedMetadata
+        };
+        i++; // Skip the next message since we've already processed it
       }
+      
+      formattedLog.push(chatEntry);
     }
-    
-    return formattedLog;
-  };
+  }
+  
+  return formattedLog;
+};
 
   // Fetch chat history using the sessions context
   const loadChatHistory = async () => {
@@ -163,7 +171,9 @@ export default function ChatPage({ initialChatId = null }: ChatPageProps) {
       const session = getSessionById(chatId);
       
       if (session && session.messages && Array.isArray(session.messages)) {
+        console.log("Raw session messages:", session.messages);
         const formattedHistory = formatChatHistoryToLog(session.messages);
+        console.log("Formatted chat history:", formattedHistory);
         
         if (chatLog.length === 0 && formattedHistory.length > 0) {
           setChatLog(formattedHistory);
@@ -226,6 +236,7 @@ export default function ChatPage({ initialChatId = null }: ChatPageProps) {
           }
         }
       );
+      console.log("API Response:", res.data);
       
       // Format the response
       const formattedResponse: ApiResponse = {
@@ -376,22 +387,52 @@ export default function ChatPage({ initialChatId = null }: ChatPageProps) {
   const formatMetadata = (metadata: any): any[] => {
     if (!metadata) return [];
     
-    // Transform metadata from object to array format
-    const metadataArray = Object.keys(metadata).map(key => {
-      const item = metadata[key];
-      return {
-        id: parseInt(key),
-        file_id: parseInt(key),
-        case_type: item.case_type || "",
-        text: item.text || "",
-        date: item.date || "",
-        score: item.score || 0,
-        file_url: item.url || "",
-        file_summary: item.summary || ""
-      };
-    });
+    // If metadata is already an array, use it directly
+    if (Array.isArray(metadata)) {
+      return metadata;
+    }
     
-    return metadataArray;
+    // Transform metadata from object to array format
+    if (typeof metadata === 'object') {
+      // For structure like metadata: { metadata: [...] }
+      if (metadata.metadata && Array.isArray(metadata.metadata)) {
+        return metadata.metadata;
+      }
+      
+      // For structure like metadata: { metadata: { "1": {...}, "2": {...} } }
+      if (metadata.metadata && typeof metadata.metadata === 'object') {
+        return Object.keys(metadata.metadata).map(key => {
+          const item = metadata.metadata[key];
+          return {
+            id: parseInt(key),
+            file_id: parseInt(key),
+            case_type: item.case_type || "",
+            text: item.text || "",
+            date: item.date || "",
+            score: item.score || 0,
+            file_url: item.url || "",
+            file_summary: item.summary || ""
+          };
+        });
+      }
+      
+      // For structure like metadata: { "1": {...}, "2": {...} }
+      return Object.keys(metadata).map(key => {
+        const item = metadata[key];
+        return {
+          id: parseInt(key),
+          file_id: parseInt(key),
+          case_type: item.case_type || "",
+          text: item.text || "",
+          date: item.date || "",
+          score: item.score || 0,
+          file_url: item.url || "",
+          file_summary: item.summary || ""
+        };
+      });
+    }
+    
+    return [];
   };
 
   // Handle API error

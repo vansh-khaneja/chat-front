@@ -11,8 +11,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { ReferencesSectionProps } from "./types";
-import { useUser,  SignInButton,
-} from '@clerk/nextjs'
+import { useUser, SignInButton } from '@clerk/nextjs'
 
 export default function ReferencesSection({ 
   metadata, 
@@ -22,10 +21,18 @@ export default function ReferencesSection({
   isPremium,
   isLoaded
 }: ReferencesSectionProps) {
-
-
   const { user } = useUser()
   const email = user?.primaryEmailAddress?.emailAddress
+  
+  // If no metadata or empty array, show a message
+  if (!metadata || metadata.length === 0) {
+    return (
+      <div className="mt-4 p-3 bg-gray-50 rounded-lg text-center text-gray-500 text-sm">
+        No se encontraron referencias relevantes.
+      </div>
+    );
+  }
+
   const handleActivatePro = async () => {
     const res = await fetch('/api/create-checkout-session', {
       method: 'POST',
@@ -37,14 +44,32 @@ export default function ReferencesSection({
     window.location.href = data.url;
   };
 
-
   return (
-    <div className="mt-4 sm:mt-6 space-y-1">
+    <div className="mt-4 sm:mt-6 space-y-1 bg-gray-50 p-3 rounded-lg">
+      <h3 className="text-sm font-medium mb-3 text-gray-700">Referencias legales</h3>
+      
       {metadata.map((item, index) => {
+        // Check if the item has all required properties
+        if (!item || typeof item !== 'object') {
+          return null;
+        }
+        
         // Apply locked status to references after the first one for:
         // 1. Not logged in users OR
         // 2. Logged in users who don't have premium
         const isLocked = (!isLoaded || !isSignedIn || (isSignedIn && !isPremium)) && index > 0;
+        
+        // Format item data, using default values if properties are missing
+        const formattedItem = {
+          id: item.id || item.file_id || index,
+          case_type: item.case_type || "Legal",
+          file_id: item.file_id || item.id || index,
+          score: typeof item.score === 'number' ? item.score : 0,
+          text: item.text || "No text available",
+          date: item.date || "",
+          file_url: item.file_url || "",
+          file_summary: item.file_summary || "No summary available"
+        };
         
         return (
           <React.Fragment key={index}>
@@ -61,26 +86,26 @@ export default function ReferencesSection({
               <div className="flex-1 text-xs sm:text-sm text-gray-800">
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-1 sm:gap-0 mb-2">
                   <div className="flex flex-wrap gap-1 sm:gap-2 items-center">
-                    <span className="font-semibold">{item.case_type}</span>
+                    <span className="font-semibold">{formattedItem.case_type}</span>
                     <span className="hidden sm:inline text-gray-400">|</span>
-                    {item.date && (
+                    {formattedItem.date && (
                       <>
-                        <span className="text-gray-600">{item.date}</span>
+                        <span className="text-gray-600">{formattedItem.date}</span>
                         <span className="hidden sm:inline text-gray-400">|</span>
                       </>
                     )}
-                    <span>file-{item.file_id}</span>
+                    <span>file-{formattedItem.file_id}</span>
                   </div>
                   <Badge variant="outline" className="text-xs w-fit">
-                    {Math.round(item.score * 100)}% coincidir
+                    {Math.round(formattedItem.score * 100)}% coincidir
                   </Badge>
                 </div>
                 
                 {/* Content with conditional blur */}
                 <p className={`text-xs sm:text-sm text-gray-700 ${isLocked ? "blur-[2px]" : ""}`}>
                   {expandedIndex === index
-                    ? item.text
-                    : `${item.text.slice(0, 100)}${item.text.length > 100 ? '...' : ''}`}
+                    ? formattedItem.text
+                    : `${formattedItem.text.slice(0, 100)}${formattedItem.text.length > 100 ? '...' : ''}`}
                 </p>
                 
                 {/* Action buttons row */}
@@ -93,16 +118,18 @@ export default function ReferencesSection({
                     {expandedIndex === index ? "Mostrar menos" : "Mostrar más"}
                   </button>
                   
-                  {/* Document link */}
-                  <a href={isLocked ? "#" : item.file_url}
-                    onClick={(e) => isLocked && e.preventDefault()}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 hover:underline flex items-center gap-1"
-                  >
-                    <span>[Ver documento]</span>
-                    <ExternalLink size={10} className="sm:w-3 sm:h-3" />
-                  </a>
+                  {/* Document link - only show if URL is available */}
+                  {formattedItem.file_url && (
+                    <a href={isLocked ? "#" : formattedItem.file_url}
+                      onClick={(e) => isLocked && e.preventDefault()}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline flex items-center gap-1"
+                    >
+                      <span>[Ver documento]</span>
+                      <ExternalLink size={10} className="sm:w-3 sm:h-3" />
+                    </a>
+                  )}
                   
                   {/* Summary Dialog */}
                   <Dialog>
@@ -116,7 +143,7 @@ export default function ReferencesSection({
                         <DialogTitle>Resumen del documento</DialogTitle>
                       </DialogHeader>
                       <div className="p-3 sm:p-4">
-                        <p className="text-xs sm:text-sm text-gray-700">{item.file_summary}</p>
+                        <p className="text-xs sm:text-sm text-gray-700">{formattedItem.file_summary}</p>
                       </div>
                     </DialogContent>
                   </Dialog>
@@ -131,14 +158,12 @@ export default function ReferencesSection({
                       <>
                         <LogIn size={16} className="text-red-500" />
                         <SignInButton mode="modal">
-
-                        <button 
-                          className="text-xs sm:text-sm font-medium text-center sm:text-left hover:text-red-600 transition-colors cursor-pointer"
-                        >
-                          Inicie sesión para ver
-                        </button>
+                          <button 
+                            className="text-xs sm:text-sm font-medium text-center sm:text-left hover:text-red-600 transition-colors cursor-pointer"
+                          >
+                            Inicie sesión para ver
+                          </button>
                         </SignInButton>
-
                       </>
                     ) : (
                       <>

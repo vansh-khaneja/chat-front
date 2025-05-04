@@ -65,6 +65,20 @@ export interface ChatPageProps {
   initialChatId?: string | null;
 }
 
+// Sidebar filter interfaces
+export interface SidebarFilterProps {
+  activeFilters: string[];
+  toggleFilter: (filter: string) => void;
+  clearFilters: () => void;
+  isSidebarExpanded: boolean;
+}
+
+export interface CaseTypeFilter {
+  id: string;
+  name: string;
+  color: string;
+}
+
 // New API request interfaces for the new endpoint
 export interface ResponseApiRequest {
   question: string;
@@ -91,6 +105,18 @@ export interface Message {
   content: string;
   role: string;
   timestamp: string;
+  metadata?: {
+    metadata: MetadataItem[] | {
+      [key: string]: {
+        text: string;
+        date: string;
+        score: number;
+        case_type: string;
+        url: string;
+        summary: string;
+      }
+    }
+  };
 }
 
 export interface Session {

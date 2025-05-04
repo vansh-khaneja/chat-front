@@ -1,13 +1,19 @@
 'use client'
 // components/ChatPage/ChatSideBar.tsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { MessageSquare, Plus, Menu, X } from 'lucide-react';
 import { useSessions } from '@/lib/sessions-context';
+import SidebarFilter from './SideBarFilter';
+import { 
+  getAvailableCaseTypes, 
+  filterSessionsByCaseTypes
+} from '@/lib/chat-filter-utils';
 
 export default function ChatSidebar() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [activeFilters, setActiveFilters] = useState<string[]>([]);
   
   const router = useRouter();
   const pathname = usePathname();
@@ -17,6 +23,16 @@ export default function ChatSidebar() {
   
   // Extract chatId from the URL if it exists
   const activeChatId = pathname && pathname !== '/' ? pathname.substring(1) : null;
+
+  // Get available case types with counts
+  const availableCaseTypes = useMemo(() => {
+    return getAvailableCaseTypes(sessions);
+  }, [sessions]);
+
+  // Filter sessions based on active filters
+  const filteredSessions = useMemo(() => {
+    return filterSessionsByCaseTypes(sessions, activeFilters);
+  }, [sessions, activeFilters]);
 
   // Handle window resize to adjust sidebar state
   useEffect(() => {
@@ -54,6 +70,20 @@ export default function ChatSidebar() {
     setIsMobileMenuOpen(!isMobileMenuOpen);
   };
 
+  // Toggle a case type filter
+  const toggleFilter = (filter: string) => {
+    setActiveFilters(prev => 
+      prev.includes(filter)
+        ? prev.filter(f => f !== filter)
+        : [...prev, filter]
+    );
+  };
+
+  // Clear all filters
+  const clearFilters = () => {
+    setActiveFilters([]);
+  };
+
   // Helper function to get the first user message from the chat for preview
   const getChatPreview = (messages: any[]): string => {
     if (!messages || messages.length === 0) return "New conversation";
@@ -82,7 +112,7 @@ export default function ChatSidebar() {
     }
   };
 
-  // Mobile menu button - only visible on small screens - UPDATED position
+  // Mobile menu button - only visible on small screens
   const MobileMenuButton = () => (
     <button 
       className="md:hidden fixed top-3 left-4 z-20 p-2 bg-white border border-gray-200 rounded-md shadow-sm"
@@ -105,7 +135,7 @@ export default function ChatSidebar() {
         <div className="flex flex-col h-full">
           {/* Header with toggle */}
           <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-            {(isSidebarOpen || isMobileMenuOpen) && <h2 className="font-medium text-gray-800">Conversations</h2>}
+            {(isSidebarOpen || isMobileMenuOpen) && <h2 className="font-medium text-gray-800">Conversaciones</h2>}
             
             <div className="flex gap-2">
               <button 
@@ -125,6 +155,17 @@ export default function ChatSidebar() {
             </div>
           </div>
           
+          {/* Filter section - only show if we have sessions with case types */}
+          {(isSidebarOpen || isMobileMenuOpen) && availableCaseTypes.length > 0 && (
+            <SidebarFilter 
+              activeFilters={activeFilters}
+              toggleFilter={toggleFilter}
+              clearFilters={clearFilters}
+              isSidebarExpanded={isSidebarOpen || isMobileMenuOpen}
+              availableCaseTypes={availableCaseTypes}
+            />
+          )}
+          
           {/* New chat button */}
           <div className="p-3">
             <button 
@@ -132,7 +173,7 @@ export default function ChatSidebar() {
               onClick={handleNewChat}
             >
               <Plus size={16} className="mr-2" />
-              {(isSidebarOpen || isMobileMenuOpen) && <span>New Chat</span>}
+              {(isSidebarOpen || isMobileMenuOpen) && <span>Nuevo Chat</span>}
             </button>
           </div>
           
@@ -145,7 +186,7 @@ export default function ChatSidebar() {
               </div>
             ) : (
               <div className="space-y-1">
-                {sessions.map((session) => {
+                {filteredSessions.map((session) => {
                   const lastMessage = session.messages && session.messages.length > 0 
                     ? session.messages[session.messages.length - 1] 
                     : null;
@@ -172,7 +213,8 @@ export default function ChatSidebar() {
                               {formatTimestamp(timestamp)}
                             </span>
                           </div>
-                          <span className="text-xs text-gray-500 truncate block">
+                          
+                          <span className="text-xs text-gray-500 truncate block mt-1">
                             {session.session_id.substring(0, 10)}...
                           </span>
                         </div>
@@ -181,9 +223,11 @@ export default function ChatSidebar() {
                   );
                 })}
                 
-                {sessions.length === 0 && !loading && (
+                {filteredSessions.length === 0 && !loading && (
                   <div className="text-center py-8 px-2 text-gray-500 text-sm">
-                    {(isSidebarOpen || isMobileMenuOpen) && "No conversations yet. Start a new chat!"}
+                    {activeFilters.length > 0 
+                      ? "No se encontraron conversaciones con estos filtros."
+                      : "No hay conversaciones aún. ¡Inicia un nuevo chat!"}
                   </div>
                 )}
               </div>

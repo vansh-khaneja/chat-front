@@ -25,8 +25,8 @@ export async function POST(req: NextRequest) {
         },
       ],
       customer_email: email, // 📨 Send email here
-      success_url: 'https://chatbot-front-self-rho.vercel.app/success',
-      cancel_url: 'https://chatbot-front-self-rho.vercel.app/',
+      success_url: 'https://lexscope.vercel.app/success',
+      cancel_url: 'https://lexscope.vercel.app/',
       metadata: {
         userId: userId, // ← pass this from your frontend
       },

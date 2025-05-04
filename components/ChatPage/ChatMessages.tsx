@@ -1,5 +1,5 @@
 // components/ChatPage/ChatMessages.tsx
-import React from "react";
+import React, { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { SignedIn, SignedOut, SignInButton } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
@@ -64,6 +64,24 @@ export default function ChatMessages({
   isPremium,
   isLoaded
 }: ChatMessagesProps) {
+  // Track which message's references are being shown (initially null or the latest message index)
+  const [activeReferenceMessageIndex, setActiveReferenceMessageIndex] = useState<number | null>(
+    chatLog.length > 0 ? chatLog.length - 1 : null
+  );
+
+  // Toggle references for a specific message
+  const toggleMessageReferences = (index: number) => {
+    if (activeReferenceMessageIndex === index) {
+      // If already showing this message's references, hide them
+      setActiveReferenceMessageIndex(null);
+    } else {
+      // Show this message's references and hide any others
+      setActiveReferenceMessageIndex(index);
+    }
+    // Reset expanded index when switching between messages
+    setExpandedIndex(null);
+  };
+
   return (
     <div className="w-full mx-auto space-y-8 px-3 sm:px-4 md:max-w-3xl">
       {/* Show login banner for signed out users with existing messages */}
@@ -131,10 +149,10 @@ export default function ChatMessages({
                     <Button 
                       variant="outline" 
                       size="sm"
-                      onClick={toggleReferences}
+                      onClick={() => toggleMessageReferences(i)}
                       className="text-xs mt-3 sm:mt-4 flex items-center gap-1 h-auto px-2 py-1 sm:h-8 sm:px-3"
                     >
-                      {showReferences ? (
+                      {activeReferenceMessageIndex === i ? (
                         <>
                           <ChevronUp size={14} /> Ocultar referencias
                         </>
@@ -147,7 +165,8 @@ export default function ChatMessages({
                   )}
 
                   {/* REFERENCES SECTION */}
-                  {!chat.isTyping && showReferences && chat.response.metadata && chat.response.metadata.length > 0 && (
+                  {!chat.isTyping && activeReferenceMessageIndex === i && 
+                   chat.response.metadata && chat.response.metadata.length > 0 && (
                     <ReferencesSection 
                       metadata={processMetadata(chat.response.metadata)}
                       expandedIndex={expandedIndex}
